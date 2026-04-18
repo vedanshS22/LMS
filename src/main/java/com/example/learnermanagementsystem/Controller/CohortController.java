@@ -1,0 +1,105 @@
+package com.example.learnermanagementsystem.Controller;
+
+import com.example.learnermanagementsystem.DTO.ApiErrorResponse;
+import com.example.learnermanagementsystem.DTO.CohortDTO;
+import com.example.learnermanagementsystem.DTO.request.AssignLearnersToCohortRequest;
+import com.example.learnermanagementsystem.DTO.request.CreateCohortRequest;
+import com.example.learnermanagementsystem.Exception.CohortNotFoundException;
+import com.example.learnermanagementsystem.Exception.LearnerNotFoundException;
+import com.example.learnermanagementsystem.Service.CohortService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+@RestController
+@RequestMapping("/api/v1/cohorts")
+@Validated
+public class CohortController {
+
+    @Autowired
+    private CohortService cohortService;
+
+    @PostMapping
+    public ResponseEntity<CohortDTO> createCohort(@Valid @RequestBody CreateCohortRequest request) {
+        CohortDTO created = cohortService.createCohort(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @GetMapping("/{cohortId}")
+    public ResponseEntity<CohortDTO> getCohortById(
+            @PathVariable @Positive(message = "cohortId must be positive") Long cohortId) {
+        return ResponseEntity.ok(cohortService.getCohortById(cohortId));
+    }
+
+    @PostMapping("/{cohortId}/learners")
+    public ResponseEntity<CohortDTO> assignLearnersToCohort(
+            @PathVariable @Positive(message = "cohortId must be positive") Long cohortId,
+            @Valid @RequestBody AssignLearnersToCohortRequest request) {
+        return ResponseEntity.ok(cohortService.assignLearnersToCohort(cohortId, request));
+    }
+
+    @PostMapping("/{cohortId}/learners/{learnerId}")
+    public ResponseEntity<CohortDTO> assignExistingLearnerToCohort(
+            @PathVariable @Positive(message = "cohortId must be positive") Long cohortId,
+            @PathVariable @Positive(message = "learnerId must be positive") Long learnerId) {
+        return ResponseEntity.ok(cohortService.assignExistingLearnerToCohort(cohortId, learnerId));
+    }
+
+    @ExceptionHandler(CohortNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleCohortNotFound(CohortNotFoundException ex,
+                                                                  HttpServletRequest request) {
+        return RestErrorBodies.status(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(LearnerNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleLearnerNotFound(LearnerNotFoundException ex,
+                                                                  HttpServletRequest request) {
+        return RestErrorBodies.status(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnreadableJson(HttpMessageNotReadableException ex,
+                                                                 HttpServletRequest request) {
+        return RestErrorBodies.unreadableJson(ex, request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
+                                                               HttpServletRequest request) {
+        return RestErrorBodies.typeMismatch(ex, request);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleBeanValidation(MethodArgumentNotValidException ex,
+                                                                 HttpServletRequest request) {
+        return RestErrorBodies.beanValidation(ex, request);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleConstraintViolation(ConstraintViolationException ex,
+                                                                      HttpServletRequest request) {
+        return RestErrorBodies.constraintViolation(ex, request);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex,
+                                                                HttpServletRequest request) {
+        return RestErrorBodies.dataIntegrity(ex, request);
+    }
+}
